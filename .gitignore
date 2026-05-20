@@ -73,6 +73,10 @@ third_party/
 *.pem
 secrets/
 
+# ── Project images (LFS-tracked, objects not available in this environment) ──
+# Re-add when git lfs pull has been run and objects are present.
+images/
+
 # ── IDE / OS ─────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
