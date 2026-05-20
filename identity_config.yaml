@@ -1,0 +1,77 @@
+# Phase C — identity extraction configuration
+# Usage:
+#   python -m mosl.render.identity --config identity_config.yaml
+#   python -m mosl.render.identity --config identity_config.yaml --input photos/omar/
+#
+# CLI flags override values in this file.
+# All fields are optional; unset fields use the dataclass defaults.
+
+# ── I/O ─────────────────────────────────────────────────────────────────────
+# Folder of face photos for a single identity run.
+# Overridden by --input on the CLI, or by --batch for multi-identity runs.
+input_dir: ""
+
+# Identity name used for output filenames.
+# Defaults to the input folder name when left empty.
+identity_id: ""
+
+# Root directory for all Phase C outputs.
+# Sub-directories are created automatically:
+#   <out_root>/identity_embeddings/   ← NPZ embedding files
+#   <out_root>/identity_metadata/     ← JSON metadata files
+#   <out_root>/aligned/<identity_id>/ ← face crops and visualizations
+out_root: outputs/identity
+
+# ── insightface backend ──────────────────────────────────────────────────────
+# Model pack name. antelopev2 is the InstantID default and includes the
+# ArcFace recognition model required for 512-d embeddings.
+# buffalo_l is lighter but still produces compatible embeddings.
+det_model: antelopev2   # antelopev2 | buffalo_l
+
+# Where insightface caches downloaded model packs.
+model_root: ~/.insightface
+
+# Detector input resolution. 640 is the recommended value for antelopev2.
+# Reduce to 320 for faster inference on small faces.
+det_size: 640
+
+# Inference device. Use cuda on DGX; cpu for local testing.
+device: cuda   # cuda | cpu
+
+# ── face crop geometry ───────────────────────────────────────────────────────
+# Edge length (pixels) of the square face crop saved for Phase D.
+# 512 gives IP-Adapter FaceID Plus enough resolution for CLIP encoding.
+crop_size: 512
+
+# Extra context added around the face bounding box (fraction of bbox size).
+# 0.40 = 40% padding on each side. Increase for very tight crops.
+crop_margin: 0.40
+
+# ── quality gates ────────────────────────────────────────────────────────────
+# Minimum insightface detection score to accept a face.
+# Faces below this threshold are silently skipped.
+min_det_score: 0.50
+
+# Cosine similarity threshold for outlier filtering during fusion.
+# Images whose embedding is below this similarity to the provisional mean
+# are excluded from the fused identity. Range: 0.0–1.0.
+# Lower = more permissive (keep more images).
+# Higher = stricter (only very consistent images contribute).
+outlier_threshold: 0.50
+
+# Warn if the mean pairwise cosine similarity across all images falls below
+# this value. Low values suggest mixed identities or heavy pose variation.
+consistency_warn: 0.55
+
+# Which face to keep when multiple faces appear in one image.
+# largest:        keep the face with the largest bounding box area (default).
+# most_confident: keep the face with the highest detection score.
+face_select: largest   # largest | most_confident
+
+# ── output options ───────────────────────────────────────────────────────────
+# Write detection-overlay images (<stem>_detect.png) and the alignment
+# visualization (alignment_viz.png) to the aligned/<identity_id>/ directory.
+save_viz: false
+
+# Write a contact sheet of all 112×112 ArcFace-aligned crops (aligned_grid.png).
+save_aligned_grid: false

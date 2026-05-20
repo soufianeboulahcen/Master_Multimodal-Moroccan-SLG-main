@@ -1,0 +1,47 @@
+# Avatar video rendering subsystem (mosl/render/) — Phases B–G.
+# These are NOT needed for the original SignLLM pipeline; install only on the
+# DGX when running the avatar renderer.  Keep the base requirements.txt as-is.
+#
+#   pip install -r requirements-render.txt
+#
+# torch / torchvision are intentionally NOT listed: use the versions already in
+# the NGC PyTorch container (nvcr.io/nvidia/pytorch:26.04-py3) — they have the
+# native Blackwell SM_120 kernels. Installing torch from PyPI here would shadow
+# them with a PTX-JIT build. See mosl/render/SETUP_DGX.md.
+#
+# This is a known-consistent set; if aarch64 wheels on the DGX differ, relax the
+# pins rather than forcing these exact versions.
+
+# --- shared (Phases B, C, D) -----------------------------------------------
+numpy==2.2.6
+Pillow==11.1.0
+opencv-python==4.10.0.84
+onnxruntime-gpu==1.20.1          # CUDA execution provider; aarch64 build
+
+# --- Phase B: DWPose extraction --------------------------------------------
+rtmlib==0.0.13                   # runs the DWPose / RTMPose whole-body models
+
+# --- Phase C: identity ------------------------------------------------------
+insightface==0.7.3               # ArcFace encoder (antelopev2 pack)
+
+# --- Phase D/E: diffusion (keyframe + video) -------------------------------
+diffusers==0.32.2
+transformers==4.48.0
+accelerate==1.3.0
+safetensors==0.5.2
+huggingface-hub==0.27.1
+einops==0.8.0
+omegaconf==2.3.0                 # MimicMotion config loading
+
+# --- video IO / Phase F -----------------------------------------------------
+imageio==2.36.1
+imageio-ffmpeg==0.5.1
+av==13.1.0
+
+# --- NOT pip-installable — clone these repos on the DGX --------------------
+# InstantID (Phase D): github.com/instantX-research/InstantID
+#   weights:  huggingface.co/InstantX/InstantID  (ControlNetModel + ip-adapter.bin)
+#   SDXL base: huggingface.co/SG161222/RealVisXL_V5.0  (realism checkpoint)
+# MimicMotion (Phase E): github.com/Tencent/MimicMotion
+#   weights:  huggingface.co/tencent/MimicMotion  +  SVD-XT-1.1 base
+# RIFE (Phase F, frame interpolation): github.com/hzwer/Practical-RIFE

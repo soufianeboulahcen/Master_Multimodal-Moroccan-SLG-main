@@ -1,0 +1,86 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Model weights & checkpoints ──────────────────────────────────────────────
+# Large binary files — store in a model registry, not git.
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.h5
+*.pkl
+*.task
+checkpoints/
+weights/
+models/
+
+# ── Dataset & raw video ──────────────────────────────────────────────────────
+# Raw videos are too large for git. CSVs in data/ are committed (small metadata).
+data/raw/
+data/processed/
+data/vedios-dataset/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# ── Generated outputs ────────────────────────────────────────────────────────
+# Outputs are reproducible from source; commit only READMEs inside outputs/.
+outputs/openpose_json/
+outputs/pose_control/
+outputs/frames/
+outputs/videos/
+outputs/openpose_overlay/
+outputs/identity/
+outputs/dwpose/
+outputs/keyframes/
+outputs/render/
+
+# ── Diffusion pipeline caches ────────────────────────────────────────────────
+.hf_cache/
+.insightface/
+third_party/
+
+# ── Environment & secrets ────────────────────────────────────────────────────
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
