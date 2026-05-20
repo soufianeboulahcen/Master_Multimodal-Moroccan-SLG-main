@@ -112,8 +112,19 @@ Inspect before scaling up:
 ## 6. Full batch
 
 ```bash
+# Phase B — re-extract DWPose keypoints for all sign clips
 python -m mosl.render.dwpose_extract --video-dir data/raw/vedios-dataset \
     --render --npz
+
+# Phase C — extract identity embeddings for all signers
+# Single identity:
+python -m mosl.render.identity --input photos/<person>/ --viz
+
+# All sub-folders at once (one identity per sub-folder):
+python -m mosl.render.identity --batch photos/ --config identity_config.yaml
+
+# List saved identities:
+python -m mosl.render.identity --list
 ```
 
 ---
