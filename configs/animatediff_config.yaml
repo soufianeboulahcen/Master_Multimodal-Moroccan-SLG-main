@@ -1,0 +1,65 @@
+# Phase E (AnimateDiff backend) — production inference config
+# Usage:
+#   python -m mosl.render.animatediff_backend --config configs/animatediff_config.yaml \
+#       --identity-id <person> --pose-dir outputs/pose_control/<clip>/
+
+# ── Identity ─────────────────────────────────────────────────────────────────
+identity_id: ""                          # set via --identity-id or here
+identity_root: outputs/identity
+keyframe_root: outputs/keyframes
+
+# ── Pose conditioning (Phase A output) ───────────────────────────────────────
+pose_dir: ""                             # set via --pose-dir or here
+# Example: outputs/pose_control/أَنْتِ_keypoints/
+
+# ── Output ───────────────────────────────────────────────────────────────────
+out_root: outputs/avatar_video
+
+# ── Base model ───────────────────────────────────────────────────────────────
+# Realistic_Vision gives the best skin texture for portrait video.
+# Alternative: SG161222/RealVisXL_V5.0 (SDXL, higher quality, more VRAM)
+base_model: SG161222/Realistic_Vision_V6.0_B1_noVAE
+
+# ── AnimateDiff motion adapter ───────────────────────────────────────────────
+# v1-5-3 is the most stable for portrait video.
+motion_adapter: guoyww/animatediff-motion-adapter-v1-5-3
+
+# ── ControlNet (OpenPose skeleton conditioning) ───────────────────────────────
+# Consumes Phase A pose_*.png frames directly.
+controlnet_model: lllyasviel/control_v11p_sd15_openpose
+
+# ── IP-Adapter FaceID (identity conditioning) ────────────────────────────────
+ip_adapter_model: h94/IP-Adapter
+ip_adapter_subfolder: models
+ip_adapter_weight_name: ip-adapter-faceid_sd15.bin
+
+# ── Prompts ───────────────────────────────────────────────────────────────────
+prompt: >
+  ultra photorealistic portrait video, upper body, Moroccan person,
+  cinematic DSLR footage, soft cinematic lighting, volumetric light,
+  realistic skin pores and texture, detailed eyes, natural human movement,
+  smooth motion, shallow depth of field, high dynamic range, 8k
+
+negative_prompt: >
+  flickering, distorted anatomy, deformed face, extra fingers, bad hands,
+  missing fingers, blurry, low resolution, CGI, 3d render, cartoon, anime,
+  plastic skin, waxy skin, uncanny valley, warped body, asymmetric face,
+  watermark, text, logo, jpeg artifacts, temporal artifacts, unstable motion,
+  overexposed, underexposed, noisy
+
+# ── Generation settings ───────────────────────────────────────────────────────
+num_frames: 16          # AnimateDiff native window — do not change
+width: 512
+height: 768             # portrait aspect ratio (3:2)
+steps: 25               # 20 minimum, 30 for best quality
+guidance_scale: 7.5     # 7.0–8.0 sweet spot for SD1.5 realism
+controlnet_scale: 0.85  # pose adherence; lower = more creative freedom
+ip_adapter_scale: 0.60  # identity strength; 0.5–0.7 is the stable range
+fps: 8                  # generate at 8fps, Phase F interpolates to 25–30fps
+seed: 42
+device: cuda
+dtype: fp16
+
+# ── Tiling (for sequences longer than num_frames) ────────────────────────────
+tile_overlap: 4         # frames cross-faded between adjacent tiles
+                        # higher = smoother seams, more compute

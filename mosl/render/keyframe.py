@@ -98,7 +98,7 @@ class KeyframeConfig:
     height: int = 1216
     steps: int = 30
     guidance_scale: float = 5.0
-    identitynet_strength: float = 0.80     # ControlNet (face structure)
+    identitynet_strength: float = 0.65     # ControlNet (face structure); 0.80 is too rigid
     adapter_strength: float = 0.80         # IP-adapter (face texture/identity)
     num_variants: int = 4
     seed: int = 42
@@ -109,6 +109,7 @@ class KeyframeConfig:
     min_identity_cosine: float = 0.50      # warn if the best variant is below
     device: str = "cuda"
     dtype: str = "fp16"
+    save_viz: bool = True                  # save face_kps.png alongside keyframe
 
     _FILE_FIELDS = (
         "identity_id", "identity_root", "out_root", "sdxl_model",
@@ -116,7 +117,7 @@ class KeyframeConfig:
         "width", "height", "steps", "guidance_scale", "identitynet_strength",
         "adapter_strength", "num_variants", "seed", "kps_source",
         "face_height_frac", "face_cx", "face_cy", "min_identity_cosine",
-        "device", "dtype",
+        "device", "dtype", "save_viz",
     )
 
     def __post_init__(self) -> None:
@@ -125,12 +126,19 @@ class KeyframeConfig:
 
 
 def load_config(path: Path | None, args: argparse.Namespace) -> KeyframeConfig:
-    """Resolve config: CLI flags > JSON file > dataclass defaults."""
+    """Resolve config: CLI flags > YAML/JSON file > dataclass defaults."""
     data: dict = {}
     if path is not None:
         if not path.is_file():
             raise SystemExit(f"config file not found: {path}")
-        data.update(json.loads(path.read_text(encoding="utf-8")))
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            try:
+                import yaml  # noqa: PLC0415
+                data.update(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
+            except ImportError as exc:
+                raise RuntimeError("pyyaml required for YAML configs: pip install pyyaml") from exc
+        else:
+            data.update(json.loads(path.read_text(encoding="utf-8")))
     cli = {
         "identity_id": args.identity_id, "out_root": args.out_root,
         "sdxl_model": args.sdxl_model, "num_variants": args.variants,
@@ -280,6 +288,30 @@ def score_identity(image: Image.Image, target_norm: np.ndarray,
     return float(emb @ target)
 
 
+# --- discovery --------------------------------------------------------------
+
+def list_keyframes(out_root: Path) -> list[dict]:
+    """Return a summary of all saved keyframes under out_root.
+
+    Reads each manifest.json and returns lightweight summaries so Phase G
+    can discover available keyframes without loading images.
+    """
+    out_root = Path(out_root).expanduser()
+    summaries: list[dict] = []
+    for manifest_path in sorted(out_root.rglob("manifest.json")):
+        try:
+            m = json.loads(manifest_path.read_text(encoding="utf-8"))
+            summaries.append({
+                "identity_id": m.get("identity_id", manifest_path.parent.name),
+                "keyframe": str(manifest_path.parent / m.get("keyframe", "keyframe.png")),
+                "best_identity_cosine": m.get("best_variant", {}).get("identity_cosine"),
+                "created": m.get("created", ""),
+            })
+        except Exception as exc:  # noqa: BLE001
+            log.warning("could not read manifest %s: %s", manifest_path, exc)
+    return summaries
+
+
 # --- orchestration ----------------------------------------------------------
 
 def generate_keyframe(cfg: KeyframeConfig) -> dict:
@@ -378,6 +410,8 @@ def main() -> int:
     ap.add_argument("--steps", type=int, help="diffusion steps")
     ap.add_argument("--seed", type=int, help="base random seed")
     ap.add_argument("--device", choices=["cuda", "cpu"], help="inference device")
+    ap.add_argument("--list", action="store_true",
+                    help="list saved keyframes and exit")
     ap.add_argument("--check", action="store_true",
                     help="validate the InstantID environment and exit")
     ap.add_argument("--log-level", default="INFO",
@@ -389,6 +423,11 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 
     cfg = load_config(Path(args.config) if args.config else None, args)
+
+    if args.list:
+        kfs = list_keyframes(cfg.out_root)
+        print(json.dumps(kfs, indent=2, ensure_ascii=False))
+        return 0
 
     if args.check:
         return _run_check(cfg)

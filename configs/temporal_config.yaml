@@ -1,0 +1,48 @@
+# Phase F — temporal polish config
+# Usage:
+#   python -m mosl.render.temporal --config configs/temporal_config.yaml \
+#       --input-video outputs/avatar_video/<id>/<clip>.mp4
+
+# ── Output ───────────────────────────────────────────────────────────────────
+out_root: outputs/avatar_final
+
+# ── Target frame rate ────────────────────────────────────────────────────────
+# MimicMotion generates at 15fps, AnimateDiff at 8fps.
+# RIFE 2× interpolation: 15→30fps or 8→16fps (then re-encode at target_fps).
+target_fps: 30
+
+# ── Deflicker ────────────────────────────────────────────────────────────────
+# Removes per-frame brightness/color flicker from diffusion output.
+# deflicker_size: temporal window in frames (smaller = less blur, more flicker)
+deflicker: true
+deflicker_size: 5       # 5 is the sweet spot for avatar video (was 7)
+
+# ── Frame interpolation ───────────────────────────────────────────────────────
+# RIFE is strongly preferred over ffmpeg minterpolate for sign-language video
+# because it handles fast hand motion without ghosting.
+interpolate: true
+interp_backend: rife    # rife | ffmpeg
+rife_repo: checkpoints/Practical-RIFE
+# git clone https://github.com/hzwer/Practical-RIFE
+rife_exp: 1             # 1 = 2× interpolation, 2 = 4× interpolation
+
+# ── Face-region stabilization ────────────────────────────────────────────────
+# Applies vidstab to reduce face flicker independently of body motion.
+# Enable when face flickers across MimicMotion tiles.
+face_stabilize: false   # set true for long clips (>72 frames)
+face_stabilize_strength: 0.5
+
+# ── Upscaling ────────────────────────────────────────────────────────────────
+# Real-ESRGAN is strongly preferred over ffmpeg lanczos for skin texture.
+# Enable for delivery; disable for fast iteration.
+upscale: false          # set true for final delivery
+upscale_factor: 2       # 2× is the standard (576→1152px or 512→1024px)
+upscale_backend: realesrgan   # realesrgan | ffmpeg
+realesrgan_repo: checkpoints/Real-ESRGAN
+# git clone https://github.com/xinntao/Real-ESRGAN
+realesrgan_model: realesr-general-x4v3   # best for video (not anime)
+
+# ── Final encode ─────────────────────────────────────────────────────────────
+crf: 18                 # H.264 quality (18 = near-lossless, 23 = standard)
+preset: slow            # slow = better compression at same quality
+codec: libx264          # libx264 | libx265 (x265 is smaller but slower)

@@ -92,9 +92,16 @@ def main() -> int:
     motion = ap.add_mutually_exclusive_group(required=True)
     motion.add_argument("--text", help="Arabic sign word — looked up in labels.csv")
     motion.add_argument("--driving-video", help="an explicit driving sign clip")
+    ap.add_argument("--backend", choices=["mimicmotion", "animatediff"],
+                    default="mimicmotion",
+                    help="video generation backend (default: mimicmotion)")
     ap.add_argument("--upscale", action="store_true", help="enable Phase F upscaling")
+    ap.add_argument("--interp-backend", choices=["ffmpeg", "rife"], default="ffmpeg",
+                    help="frame interpolation backend for Phase F (default: ffmpeg)")
     ap.add_argument("--force", action="store_true",
                     help="re-run stages even if their output exists")
+    ap.add_argument("--status", action="store_true",
+                    help="show which stages are complete for this identity and exit")
     ap.add_argument("--log-level", default="INFO",
                     choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     args = ap.parse_args()
@@ -107,8 +114,17 @@ def main() -> int:
     if not identity_id:
         ap.error("pass --identity-id or --photos")
 
+    # ---- status check mode ----------------------------------------------
+    if args.status:
+        emb_path = ROOT / "outputs" / "identity" / "identity_embeddings" / f"{identity_id}.npz"
+        kf_path  = ROOT / "outputs" / "keyframes" / identity_id / "keyframe.png"
+        log.info("Status for identity '%s':", identity_id)
+        log.info("  Phase C (identity embedding): %s", "✓" if emb_path.is_file() else "✗ missing")
+        log.info("  Phase D (keyframe):           %s", "✓" if kf_path.is_file() else "✗ missing")
+        return 0
+
     # ---- Stage 1/4 — identity -------------------------------------------
-    emb = ROOT / "outputs" / "identity" / "embeddings" / f"{identity_id}.npz"
+    emb = ROOT / "outputs" / "identity" / "identity_embeddings" / f"{identity_id}.npz"
     if args.photos and (args.force or not emb.is_file()):
         log.info("STAGE 1/4 — identity: encoding from %s", args.photos)
         build_identity(IdentityConfig(input_dir=args.photos,

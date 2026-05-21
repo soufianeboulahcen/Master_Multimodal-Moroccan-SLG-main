@@ -1,0 +1,69 @@
+# Phase D — InstantID keyframe generation config
+# Usage:
+#   python -m mosl.render.keyframe --config configs/keyframe_config.yaml \
+#       --identity-id <person>
+
+# ── Identity ─────────────────────────────────────────────────────────────────
+identity_id: ""                          # set via --identity-id or here
+identity_root: outputs/identity
+out_root: outputs/keyframes
+
+# ── InstantID model paths ─────────────────────────────────────────────────────
+# Clone: git clone https://github.com/instantX-research/InstantID
+instantid_repo: checkpoints/InstantID
+# Weights: huggingface-cli download InstantX/InstantID
+instantid_weights: checkpoints/InstantID
+
+# ── SDXL base model ───────────────────────────────────────────────────────────
+# RealVisXL V5.0 gives the best photorealism for portrait generation.
+sdxl_model: SG161222/RealVisXL_V5.0
+
+# ── Prompts ───────────────────────────────────────────────────────────────────
+prompt: >
+  ultra photorealistic portrait of a Moroccan person, upper body,
+  neutral standing pose, facing the camera, cinematic DSLR photograph,
+  soft cinematic lighting, volumetric light, realistic skin pores and texture,
+  detailed eyes, shallow depth of field, high dynamic range, sharp focus, 8k,
+  professional studio background, natural skin tone
+
+negative_prompt: >
+  flickering, distorted anatomy, deformed face, extra fingers, bad hands,
+  missing fingers, blurry, low resolution, lowres, CGI, 3d render, cartoon,
+  anime, plastic skin, waxy skin, uncanny valley, warped body, asymmetric face,
+  watermark, text, logo, jpeg artifacts, overexposed, underexposed
+
+# ── Generation settings ───────────────────────────────────────────────────────
+width: 832
+height: 1216            # portrait aspect (SDXL native)
+steps: 30               # 25 minimum, 35 for best quality
+guidance_scale: 5.0     # 4.5–6.0 sweet spot for InstantID + RealVisXL
+
+# Identity conditioning strengths
+# identitynet_strength: face structure lock (ControlNet)
+#   0.65 = natural expression with preserved structure (recommended)
+#   0.80 = rigid face lock (use only if identity is weak)
+identitynet_strength: 0.65
+# adapter_strength: face texture / appearance (IP-Adapter)
+#   0.80 = strong identity texture (recommended)
+adapter_strength: 0.80
+
+# ── Best-of-N selection ───────────────────────────────────────────────────────
+# Generate N variants, score each with ArcFace, keep the best.
+# More variants = better identity match, more compute.
+num_variants: 6         # 4 minimum, 8 for critical identity accuracy
+seed: 42                # base seed; variants use seed+0, seed+1, ...
+
+# ── Face landmark placement ───────────────────────────────────────────────────
+kps_source: canonical   # canonical (front-facing) | reference (from photos)
+face_height_frac: 0.14  # eye-to-mouth span as fraction of canvas height
+face_cx: 0.50           # face centre X (0=left, 1=right)
+face_cy: 0.32           # face centre Y (0=top, 1=bottom)
+
+# ── Quality gate ─────────────────────────────────────────────────────────────
+# Warn if the best variant's ArcFace cosine similarity is below this.
+min_identity_cosine: 0.50
+
+# ── Hardware ─────────────────────────────────────────────────────────────────
+device: cuda
+dtype: fp16             # fp16 for DGX; bf16 also works on Blackwell
+save_viz: true          # save face_kps.png alongside keyframe.png

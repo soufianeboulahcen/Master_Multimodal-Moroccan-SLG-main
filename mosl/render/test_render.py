@@ -334,7 +334,7 @@ class TestTemporal(unittest.TestCase):
         c = tmp.TemporalConfig()
         self.assertEqual(c.target_fps, 30)
         self.assertTrue(c.deflicker)
-        self.assertEqual(c.interp_backend, "ffmpeg")
+        self.assertEqual(c.interp_backend, "rife")   # updated default: RIFE > ffmpeg minterpolate
 
     def test_discover_inputs_skips_final_outputs(self):
         with tempfile.TemporaryDirectory() as d:
