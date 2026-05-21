@@ -85,6 +85,10 @@ images/
 .DS_Store
 Thumbs.db
 
+# ── Project images (LFS-tracked, objects not available in this environment) ──
+# Re-add when git lfs pull has been run and objects are present.
+images/
+
 # ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 logs/
