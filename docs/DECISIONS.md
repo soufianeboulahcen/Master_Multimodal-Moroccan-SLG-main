@@ -310,3 +310,115 @@ fuzzy-lookup field for inputs that omit diacritics.
 **Decided by.** Mine.  Caught while computing dataset stats.
 
 ---
+
+---
+
+## 2026-05-20 · Architecture decisions for avatar video generation system
+
+The following decisions govern the `mosl/render/` subsystem. They are binding
+and must not be reversed without explicit project-owner approval. Full rationale
+is documented below each entry.
+
+### ADR-001: Two separate video backends — MimicMotion and AnimateDiff
+
+**Decision.** Maintain both `mosl/render/video.py` (MimicMotion, SVD-based)
+and `mosl/render/animatediff_backend.py` (AnimateDiff + ControlNet-OpenPose)
+as independent, non-merged backends.
+
+**Rationale.** Sign language requires hand accuracy above all else. AnimateDiff
++ ControlNet-OpenPose enforces exact hand pose from Phase A skeleton PNGs.
+MimicMotion produces smoother photorealistic full-body motion for cinematic
+clips where hand precision is secondary. No single current model satisfies both
+requirements simultaneously. Merging them would compromise one axis or produce
+an unmaintainable hybrid.
+
+**Enforced by.** `--backend mimicmotion|animatediff` in `scripts/render_avatar.py`.
+
+---
+
+### ADR-002: Do not patch MimicMotion internals
+
+**Decision.** MimicMotion is used through its supported entry point only. Its
+internal DWPose processing is not replaced or bypassed. Phase B outputs are not
+injected into MimicMotion.
+
+**Rationale.** Patching MimicMotion to accept external Phase B outputs requires
+forking the repo and modifying non-public internal data structures. This creates
+a maintenance burden on every upstream update. AnimateDiff already provides a
+clean path for consuming Phase A/B outputs via ControlNet — use that instead.
+
+**Enforced by.** `video.py` drives MimicMotion through its YAML config entry
+point only. No internal imports from the MimicMotion package.
+
+---
+
+### ADR-003: RIFE is the default frame interpolation backend
+
+**Decision.** `TemporalConfig.interp_backend` defaults to `"rife"`.
+`ffmpeg minterpolate` is available only as an explicit fallback.
+
+**Rationale.** `ffmpeg minterpolate` uses block-matching motion estimation and
+produces visible ghosting on fast hand motion — duplicate hand shapes that
+persist 2–3 frames. This is semantically harmful in sign language video. RIFE
+uses optical-flow synthesis and eliminates ghosting at the cost of ~3× longer
+interpolation time, which is acceptable for delivery quality.
+
+**Enforced by.** `TemporalConfig.interp_backend = "rife"` and
+`render_avatar.py --interp-backend` default `"rife"`. RIFE failure triggers
+automatic fallback to ffmpeg with a WARNING log — the pipeline does not fail.
+
+---
+
+### ADR-004: AnimateDiff consumes Phase A skeleton PNGs via ControlNet
+
+**Decision.** AnimateDiff receives pose conditioning from `pose_*.png` files
+produced by Phase A (`pose_bridge.py`), not from Phase B NPZ arrays.
+
+**Rationale.** Phase A already converts raw keypoints to the RGB skeleton image
+format that ControlNet-OpenPose expects. Using Phase A output directly avoids a
+redundant conversion step. Phase B outputs remain useful for smoothing/filtering
+before Phase A rendering.
+
+**Enforced by.** `animatediff_backend.load_pose_frames()` reads `pose_*.png`
+files. The `--pose-dir` argument points to a Phase A output directory.
+
+---
+
+### ADR-005: Identity conditioning — Phase C embedding used at Phase D and Phase E AnimateDiff only
+
+**Decision.** The ArcFace embedding from Phase C is used at Phase D (InstantID
+keyframe) and Phase E AnimateDiff (IP-Adapter FaceID). It is not re-injected
+into MimicMotion.
+
+**Rationale.** MimicMotion preserves identity through SVD reference-image
+attention — the Phase D keyframe is the identity anchor. Re-injecting ArcFace
+into MimicMotion requires patching its internals (see ADR-002). For AnimateDiff,
+IP-Adapter FaceID accepts the ArcFace embedding natively.
+
+---
+
+### ADR-006: Motion quality priority order
+
+**Decision.** When making trade-offs: (1) hand accuracy, (2) temporal
+consistency, (3) identity consistency, (4) smooth body motion, (5) photorealism,
+(6) low flickering.
+
+**Rationale.** This is a sign language system. Hand shape errors are semantic
+errors — they change meaning. All other quality axes are secondary.
+
+**Consequences.** AnimateDiff preferred for sign clips. ControlNet scale 0.85
+(high pose adherence). RIFE default. `identitynet_strength` 0.65 not 0.80
+(natural expression over rigid face lock).
+
+---
+
+### ADR-007: Git workflow — feature branches, never direct main commits
+
+**Decision.** Every feature or phase is developed on a dedicated branch.
+`scripts/git_push_phase.sh` enforces: test suite passes before commit, no
+direct pushes to main, `--force-with-lease` for rebased branches.
+
+**Branch naming.** `phase-b-dwpose`, `phase-c-identity`,
+`phase-d-video-diffusion`, `controlnet-integration`, `inference-optimization`.
+
+**Decided by.** Project architecture review, 2026-05-20.

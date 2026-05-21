@@ -96,8 +96,8 @@ def main() -> int:
                     default="mimicmotion",
                     help="video generation backend (default: mimicmotion)")
     ap.add_argument("--upscale", action="store_true", help="enable Phase F upscaling")
-    ap.add_argument("--interp-backend", choices=["ffmpeg", "rife"], default="ffmpeg",
-                    help="frame interpolation backend for Phase F (default: ffmpeg)")
+    ap.add_argument("--interp-backend", choices=["ffmpeg", "rife"], default="rife",
+                    help="frame interpolation backend for Phase F (default: rife)")
     ap.add_argument("--force", action="store_true",
                     help="re-run stages even if their output exists")
     ap.add_argument("--status", action="store_true",

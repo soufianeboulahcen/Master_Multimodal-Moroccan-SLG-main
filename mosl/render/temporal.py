@@ -6,12 +6,16 @@ re-encode to a clean delivery container.
 
 Design
 ------
-**ffmpeg is the backbone** — its `deflicker` and `minterpolate` filters are
-built in, stable, and need no extra model weights, so the default path works
-anywhere ffmpeg exists. Higher-quality backends are opt-in:
+**RIFE is the default interpolation backend** — ffmpeg `minterpolate` produces
+visible ghosting on fast hand motion (sign language), so RIFE is the correct
+default for this domain. ffmpeg remains available as a fallback when RIFE is
+not installed.
 
-    interpolation : ffmpeg `minterpolate` (default)  |  RIFE (--interp-backend rife)
-    upscaling     : ffmpeg `scale=lanczos` (default) |  Real-ESRGAN (--upscale-backend realesrgan)
+    interpolation : RIFE (default)                   |  ffmpeg minterpolate (--interp-backend ffmpeg)
+    upscaling     : Real-ESRGAN (default, opt-in)    |  ffmpeg scale=lanczos (--upscale-backend ffmpeg)
+
+ffmpeg is still the backbone for deflicker, face stabilization, and final
+encoding — it requires no model weights and works everywhere.
 
 Each step writes an intermediate file (near-lossless, CRF 12) so steps are
 independently inspectable — useful while the pipeline is still unvalidated.
